@@ -5,40 +5,39 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/shm.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 int main() {
     printf("Hello from the shared client!\n");
 
-
-    // Get a handle to the shared memory segment
-    int shm_id = shmget(1234, 1024, 0666 | IPC_CREAT);
-    if (shm_id == -1) {
-        perror("shmget");
+    int shm_fd = shm_open("./my_shared_memory", O_RDWR, 0666);
+    if (shm_fd == -1) {
+        perror("shm_open");
         return 1;
     }
 
-
-    // Attach the shared memory segment to this process
-    void *shm_ptr = shmat(shm_id, NULL, 0);
-    if (shm_ptr == (void *) -1) {
-        perror("shmat");
+    void *shm_ptr = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (shm_ptr == MAP_FAILED) {
+        perror("mmap");
         return 1;
     }
 
-    // Print the contents of the shared memory segment
-    printf("The contents of the shared memory segment are: %s\n", (char *) shm_ptr);
+    printf("The value in the shared memory is: %s\n", (char *) shm_ptr);
 
-    // Detach the shared memory segment from this process
-    if (shmdt(shm_ptr) == -1) {
-        perror("shmdt");
+    // Modify the value in the shared memory
+    strcpy((char *) shm_ptr, "Hello from the shared server!");
+
+    // Unmap the shared memory
+    if (munmap(shm_ptr, 1024) == -1) {
+        perror("munmap");
         return 1;
-
     }
 
-
-    // Destroy the shared memory segment
-    if (shmctl(shm_id, IPC_RMID, NULL) == -1) {
-        perror("shmctl");
+    // Close the shared memory file descriptor
+    if (close(shm_fd) == -1) {
+        perror("close");
         return 1;
     }
 
