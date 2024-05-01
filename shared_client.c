@@ -41,5 +41,8 @@ int main() {
         return 1;
     }
 
+    // Unlink the shared memory file
+    shm_unlink("./my_shared_memory");
+
     return 0;
 }
